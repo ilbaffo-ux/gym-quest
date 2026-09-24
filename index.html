@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a1030">
+<title>Gym Quest</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%8B%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Scheda personaggio: sempre visibile -->
+  <header class="hero">
+    <div class="lvl"><span class="lvl-n" id="lvl">1</span><span class="lvl-t">livello</span></div>
+    <div>
+      <h1>Gym Quest</h1>
+      <p class="rank" id="rank">Novizio</p>
+      <div class="bar" role="progressbar" aria-label="Esperienza verso il prossimo livello" aria-valuemin="0" aria-valuemax="100" id="barA11y"><div class="fill" id="fill"></div></div>
+      <p class="xpline"><b id="xpNow">0</b> xp totali, ne mancano <b id="xpLeft">150</b> al livello <span id="lvlNext">2</span></p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat" id="statWeek"><b id="stWeek">0/3</b><span>allenamenti questa settimana</span></div>
+      <div class="stat"><b id="stStreak">0</b><span id="stStreakL">settimane di fila</span></div>
+      <div class="stat"><b id="stVol">0</b><span>kg sollevati in totale</span></div>
+    </div>
+  </header>
+
+  <nav class="nav" id="nav" aria-label="Sezioni">
+    <button type="button" data-tab="train" class="on"><span class="ni">⚔️</span>Allenati</button>
+    <button type="button" data-tab="progress"><span class="ni">📈</span>Progressi</button>
+    <button type="button" data-tab="trophies"><span class="ni">🏆</span>Trofei</button>
+    <button type="button" data-tab="more"><span class="ni">⚙️</span>Altro</button>
+  </nav>
+
+  <main>
+    <!-- ================= ALLENATI ================= -->
+    <section class="tab" id="tab-train">
+      <div class="two">
+        <div class="col">
+        <div class="card">
+          <h2>Nuova serie</h2>
+          <form id="form" autocomplete="off">
+            <label>Esercizio
+              <input id="ex" list="exlist" placeholder="Es. Panca piana" required>
+              <datalist id="exlist"></datalist>
+            </label>
+            <p class="hintbox" id="hint">Scegli un esercizio per vedere l'ultima volta e l'obiettivo di oggi.</p>
+            <label>Gruppo muscolare
+              <select id="grp"></select>
+            </label>
+            <div class="row2">
+              <div class="field">
+                <label class="fl" for="w">Peso (kg)</label>
+                <div class="stepper">
+                  <button type="button" class="st" data-t="w" data-d="-2.5" aria-label="Meno 2,5 chili">−</button>
+                  <input id="w" type="number" inputmode="decimal" step="0.5" min="0" placeholder="60" required>
+                  <button type="button" class="st" data-t="w" data-d="2.5" aria-label="Più 2,5 chili">+</button>
+                </div>
+              </div>
+              <div class="field">
+                <label class="fl" for="r">Ripetizioni</label>
+                <div class="stepper">
+                  <button type="button" class="st" data-t="r" data-d="-1" aria-label="Una ripetizione in meno">−</button>
+                  <input id="r" type="number" inputmode="numeric" step="1" min="1" placeholder="10" required>
+                  <button type="button" class="st" data-t="r" data-d="1" aria-label="Una ripetizione in più">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="row2">
+              <label>Recupero
+                <select id="rest">
+                  <option value="0">Nessuno</option>
+                  <option value="60">1 minuto</option>
+                  <option value="90">1 min 30</option>
+                  <option value="120">2 minuti</option>
+                  <option value="180">3 minuti</option>
+                </select>
+              </label>
+              <label>Data
+                <input id="d" type="date">
+              </label>
+            </div>
+            <button class="btn big" id="btnAdd" type="submit">Registra serie</button>
+          </form>
+        </div>
+
+        <div class="card compact">
+          <h2>Corsa</h2>
+          <form id="runForm" autocomplete="off">
+            <div class="row2">
+              <label>Distanza (km)<input id="rk" type="number" inputmode="decimal" step="0.01" min="0" placeholder="5" required></label>
+              <label>Data<input id="rd" type="date"></label>
+            </div>
+            <div class="row2">
+              <label>Minuti<input id="rm" type="number" inputmode="numeric" step="1" min="0" placeholder="28" required></label>
+              <label>Secondi<input id="rs" type="number" inputmode="numeric" step="1" min="0" max="59" placeholder="30"></label>
+            </div>
+            <button class="btn wide" id="btnRun" type="submit">Registra corsa</button>
+          </form>
+        </div>
+        </div>
+
+        <div class="card">
+          <h2 id="sessTitle">Allenamento di oggi</h2>
+          <p class="sub" id="sessSub"></p>
+          <div id="session"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PROGRESSI ================= -->
+    <section class="tab" id="tab-progress" hidden>
+      <div class="card">
+        <div class="groups">
+          <h2 style="grid-column:1 / -1">Livelli per gruppo muscolare</h2>
+          <div id="radar"></div>
+          <div id="gbars"></div>
+        </div>
+      </div>
+
+      <div class="two">
+        <div class="col">
+          <div class="card">
+            <h2>Andamento</h2>
+            <div class="row2">
+              <label>Esercizio<select id="chartEx"></select></label>
+              <label>Misura
+                <select id="chartMet">
+                  <option value="weight">Peso massimo</option>
+                  <option value="e1rm">Massimale stimato</option>
+                  <option value="volume">Volume del giorno</option>
+                </select>
+              </label>
+            </div>
+            <div id="chart"></div>
+          </div>
+          <div class="card">
+            <h2>Costanza</h2>
+            <p class="sub">Un quadrato per ogni giorno delle ultime 16 settimane, da lunedì a domenica.</p>
+            <div id="heat"></div>
+            <div class="legend">meno <i class="hc"></i><i class="hc l1"></i><i class="hc l2"></i><i class="hc l3"></i><i class="hc l4"></i> più</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <h2>Record personali</h2>
+            <div id="records"></div>
+          </div>
+          <div class="card compact">
+            <h2>Corsa</h2>
+            <div id="runStats"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TROFEI ================= -->
+    <section class="tab" id="tab-trophies" hidden>
+      <div class="card">
+        <h2>Trofei</h2>
+        <p class="sub" id="badgeCount"></p>
+        <div class="badges" id="badges"></div>
+      </div>
+    </section>
+
+    <!-- ================= ALTRO ================= -->
+    <section class="tab" id="tab-more" hidden>
+      <div class="two">
+        <div class="card">
+          <h2>Storico</h2>
+          <div id="history"></div>
+          <button class="btn ghost" id="histMore" type="button" hidden style="margin-top:12px">Mostra altri giorni</button>
+        </div>
+        <div class="col">
+          <div class="card">
+            <h2>Impostazioni</h2>
+            <div class="opt">
+              <label for="goal">Obiettivo settimanale</label>
+              <select id="goal">
+                <option value="1">1 allenamento</option>
+                <option value="2">2 allenamenti</option>
+                <option value="3">3 allenamenti</option>
+                <option value="4">4 allenamenti</option>
+                <option value="5">5 allenamenti</option>
+                <option value="6">6 allenamenti</option>
+                <option value="7">7 allenamenti</option>
+              </select>
+            </div>
+            <div class="opt">
+              <label for="sound">Effetti sonori</label>
+              <input id="sound" type="checkbox">
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Come si guadagnano gli xp</h2>
+            <ul class="rules">
+              <li>Ogni serie vale <b>5 xp + le ripetizioni</b>, più un extra che cresce con il peso sollevato.</li>
+              <li><b>+50 xp</b> se batti il tuo peso massimo su un esercizio.</li>
+              <li><b>+15 xp</b> se fai più ripetizioni del solito con lo stesso peso.</li>
+              <li><b>+20 xp</b> la prima volta che registri un esercizio.</li>
+              <li><b>Corsa:</b> 30 xp per ogni km, più 30 xp se batti il tuo miglior passo, 30 se è la corsa più lunga e 20 la prima volta. Conta come giorno di allenamento.</li>
+              <li>Gli xp vanno al livello generale e al gruppo muscolare scelto.</li>
+              <li>La serie conta a settimane: raggiungi l'obiettivo settimanale per non spezzarla.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h2>Dati</h2>
+            <p class="hint" style="margin-top:0">I dati restano salvati nel tuo browser. Esporta ogni tanto un backup e usalo anche per spostarli su un altro dispositivo.</p>
+            <div class="btns" style="margin-top:12px">
+              <button class="btn ghost" id="btnExport" type="button">Esporta backup</button>
+              <button class="btn ghost" id="btnImport" type="button">Importa backup</button>
+              <button class="btn ghost" id="btnReset" type="button">Cancella tutto</button>
+              <input id="file" type="file" accept="application/json" hidden>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Timer di recupero -->
+<div id="timer" role="timer" aria-live="off">
+  <span class="t" id="tLeft">1:30</span>
+  <span class="tb"><i id="tFill"></i></span>
+  <button type="button" id="tAdd">+15 s</button>
+  <button type="button" id="tSkip">Salta</button>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="levelup" role="dialog" aria-label="Nuovo livello">
+  <p class="p">Livello superato!</p>
+  <p class="n" id="luN">2</p>
+  <p class="s" id="luT"></p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
