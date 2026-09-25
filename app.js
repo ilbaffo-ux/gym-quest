@@ -46,6 +46,19 @@
     return d.toLocaleDateString('it-IT', o);
   };
   const rankOf = lvl => TITLES[Math.min(Math.floor((lvl - 1) / 2), TITLES.length - 1)];
+
+  const GROUP_RANKS = [
+    { min: 1,  name: 'Acerbo',    ic: '🌱' },
+    { min: 3,  name: 'Sveglio',   ic: '🔹' },
+    { min: 5,  name: 'Solido',    ic: '🥊' },
+    { min: 7,  name: 'Bestia',    ic: '🐺' },
+    { min: 9,  name: 'Corazzato', ic: '🛡️' },
+    { min: 12, name: 'Colosso',   ic: '🗿' },
+    { min: 15, name: 'Semidio',   ic: '⚡' },
+    { min: 20, name: 'Mitico',    ic: '🌟' }
+  ];
+  const groupRankOf = lvl => [...GROUP_RANKS].reverse().find(r => lvl >= r.min);
+  const shortRank = n => n.length > 7 ? n.slice(0, 6) + '.' : n;
   const sameEx = (l, ex) => norm(l.exercise) === norm(ex);
   const guessGroup = name => { const n = norm(name); const g = GUESS.find(([, re]) => re.test(n)); return g ? g[0] : ''; };
   const groupOf = l => l.group || guessGroup(l.exercise);
@@ -71,6 +84,7 @@
     try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
     if (!s || !Array.isArray(s.logs)) s = { logs: [] };
     if (!Array.isArray(s.runs)) s.runs = [];
+    if (!s.dungeon || typeof s.dungeon !== 'object') s.dungeon = { weekKey: '', cleared: 0, clears: 0 };
     s.settings = Object.assign({ goal: 3, rest: 90, sound: true }, s.settings || {});
     s.logs.forEach(l => { if (!l.sets) l.sets = 1; });
     return s;
@@ -95,6 +109,26 @@
     return [...seen.values()];
   }
 
+  // ---------- Dungeon settimanale ----------
+  // Le 6 stanze si superano con gli xp guadagnati nella settimana in corso (da lunedi').
+  // La difficolta' cresce con il livello generale, cosi' il dungeon resta una sfida.
+  const DUNGEON_ICONS = ['🚪', '🕸️', '🔥', '💀', '⚔️', '👑'];
+  const DUNGEON_NAMES = ['Ingresso', 'Corridoio', 'Sala delle trappole', 'Cripta', 'Guardiano', 'Sala del boss'];
+  function dungeonThresholds(lvl) {
+    const base = 30 + lvl * 5;
+    return [3, 7, 12, 18, 25, 33].map(m => Math.round(base * m / 3));
+  }
+  function weeklyXp(logs, runs) {
+    const wk = mondayOf(today());
+    const inWeek = d => mondayOf(d) === wk;
+    return sum(logs.filter(l => inWeek(l.date)), l => l.xp) + sum(runs.filter(r => inWeek(r.date)), r => r.xp);
+  }
+  function dungeonState(lvl, wxp) {
+    const th = dungeonThresholds(lvl);
+    const cleared = th.filter(t => wxp >= t).length;
+    return { th, cleared, done: cleared >= th.length, next: th[cleared] };
+  }
+
   // ---------- Calcoli ----------
   function calcXp(weight, reps, sets) {
     return sets * (5 + reps) + Math.round(weight * reps * sets / 20);
@@ -105,7 +139,8 @@
       const xp = sum(state.logs.filter(l => groupOf(l) === g), l => l.xp);
       const lvl = Math.floor(Math.sqrt(xp / 75)) + 1;
       const base = 75 * (lvl - 1) ** 2, next = 75 * lvl ** 2;
-      return { g, xp, lvl, pct: Math.min(100, ((xp - base) / (next - base)) * 100) };
+      const rk = groupRankOf(lvl);
+      return { g, xp, lvl, rank: rk.name, rankIcon: rk.ic, pct: Math.min(100, ((xp - base) / (next - base)) * 100) };
     });
   }
 
@@ -141,7 +176,9 @@
       runCount: runs.length,
       longestRun: runs.length ? Math.max(...runs.map(r => r.km)) : 0,
       count: sum(logs, l => l.sets),
-      groupsL3: gs.filter(x => x.lvl >= 3).length
+      groupsL3: gs.filter(x => x.lvl >= 3).length,
+      groupsForte: gs.filter(x => x.lvl >= 5).length,
+      dungeonClears: state.dungeon.clears
     };
   }
 
@@ -158,6 +195,9 @@
     { id: 'lvl5',    ic: '👑', name: 'Livello 5',            desc: 'Raggiungi il livello 5',                         prog: s => [s.lvl, 5] },
     { id: 'lvl10',   ic: '🐉', name: 'Livello 10',           desc: 'Raggiungi il livello 10',                        prog: s => [s.lvl, 10] },
     { id: 'bal',     ic: '⚖️', name: 'Equilibrato',          desc: 'Porta tutti i gruppi muscolari al livello 3',    prog: s => [s.groupsL3, GROUPS.length] },
+    { id: 'forte',   ic: '💪', name: 'Tutto solido',         desc: 'Porta tutti i gruppi muscolari al rango Solido', prog: s => [s.groupsForte, GROUPS.length] },
+    { id: 'dun1',    ic: '🗝️', name: 'Dungeon superato',     desc: 'Completa il dungeon settimanale una volta',      prog: s => [s.dungeonClears, 1] },
+    { id: 'dun10',   ic: '🏰', name: 'Signore del dungeon',  desc: 'Completa il dungeon settimanale 10 volte',       prog: s => [s.dungeonClears, 10] },
     { id: 'run1',    ic: '👟', name: 'Prima corsa',          desc: 'Registra la prima corsa',                        prog: s => [s.runCount, 1] },
     { id: 'run5k',   ic: '🏃', name: 'Cinque chilometri',    desc: 'Corri almeno 5 km in una volta sola',            prog: s => [s.longestRun, 5] },
     { id: 'km100',   ic: '🛣️', name: 'Cento chilometri',     desc: '100 km corsi in totale',                         prog: s => [s.runKm, 100] }
@@ -368,6 +408,7 @@
     state.logs.push({ id: Date.now(), date, exercise: ex, weight, reps, sets: 1, group, xp, pr });
     save();
 
+    const dLines = advanceDungeon();
     const after = stats();
     const gAfter = groupStats().find(x => x.g === group);
     render();
@@ -379,6 +420,7 @@
     BADGES.filter(b => isDone(b, after) && !badgesBefore.has(b.id)).forEach(b => lines.push(`Trofeo: ${b.name}`));
     if (gAfter.lvl > gBefore.lvl) lines.push(`${group} sale al livello ${gAfter.lvl}`);
     if (date !== today()) lines.push(`Serie salvata il ${shortDate(date)}`);
+    lines.push(...dLines);
     toast(lines.join('\n'));
     popXp(`+${xp} xp`);
     if (navigator.vibrate) navigator.vibrate(30);
@@ -415,6 +457,7 @@
     state.runs.push({ id: Date.now(), date, km, min, xp });
     save();
 
+    const dLines = advanceDungeon();
     const after = stats();
     render();
 
@@ -424,6 +467,7 @@
     if (longest) lines.push('Corsa più lunga di sempre (+30 bonus)');
     BADGES.filter(b => isDone(b, after) && !badgesBefore.has(b.id)).forEach(b => lines.push(`Trofeo: ${b.name}`));
     if (date !== today()) lines.push(`Corsa salvata il ${shortDate(date)}`);
+    lines.push(...dLines);
     toast(lines.join('\n'));
     popXp(`+${xp} xp`, '#btnRun');
     if (navigator.vibrate) navigator.vibrate(30);
@@ -434,6 +478,23 @@
 
     ['#rk', '#rm', '#rs'].forEach(id => { $(id).value = ''; });
   });
+
+  // Aggiorna lo stato del dungeon dopo una registrazione e ritorna le righe da mostrare nel toast
+  function advanceDungeon() {
+    const wk = mondayOf(today());
+    if (state.dungeon.weekKey !== wk) state.dungeon = { weekKey: wk, cleared: 0, clears: state.dungeon.clears };
+    const wxp = weeklyXp(state.logs, state.runs);
+    const lvl = stats().lvl;
+    const d = dungeonState(lvl, wxp);
+    const lines = [];
+    if (d.cleared > state.dungeon.cleared) {
+      for (let i = state.dungeon.cleared; i < d.cleared; i++) lines.push(`Dungeon: stanza "${DUNGEON_NAMES[i]}" superata`);
+      state.dungeon.cleared = d.cleared;
+      if (d.done) { state.dungeon.clears++; lines.push('Dungeon completato! Lunedì ne parte uno nuovo, più difficile.'); }
+      save();
+    }
+    return lines;
+  }
 
   // ---------- Rendering ----------
   function render() {
@@ -447,6 +508,7 @@
     renderHeat();
     renderRecords();
     renderRuns();
+    renderDungeon();
     renderBadges(s);
     renderHistory();
     updateHint();
@@ -586,7 +648,7 @@
   function renderGroups() {
     const gs = groupStats();
     const maxLvl = Math.max(5, ...gs.map(x => x.lvl));
-    const S = 420, c = S / 2, R = 125, n = gs.length;
+    const S = 500, c = S / 2, R = 108, n = gs.length;
     const ang = i => -Math.PI / 2 + (i * 2 * Math.PI) / n;
     const pt = (i, r) => [c + r * Math.cos(ang(i)), c + r * Math.sin(ang(i))];
     const f = v => v.toFixed(1);
@@ -597,14 +659,14 @@
     const shape = gs.map((x, i) => pt(i, R * (x.lvl / maxLvl)).map(f).join(',')).join(' ');
     const marks = gs.map((x, i) => {
       const [vx, vy] = pt(i, R * (x.lvl / maxLvl));
-      const [lx, ly] = pt(i, R + 22);
+      const [lx, ly] = pt(i, R + 34);
       const cs = Math.cos(ang(i));
       const anchor = cs > 0.3 ? 'start' : cs < -0.3 ? 'end' : 'middle';
       return `<circle class="vtx" cx="${f(vx)}" cy="${f(vy)}" r="5"/>
         <text class="glab" x="${f(lx)}" y="${f(ly - 2)}" text-anchor="${anchor}">${x.g}</text>
-        <text class="glv" x="${f(lx)}" y="${f(ly + 13)}" text-anchor="${anchor}">Lv ${x.lvl}</text>`;
+        <text class="glv" x="${f(lx)}" y="${f(ly + 13)}" text-anchor="${anchor}">Lv ${x.lvl} · ${shortRank(x.rank)}</text>`;
     }).join('');
-    const desc = gs.map(x => `${x.g} livello ${x.lvl}`).join(', ');
+    const desc = gs.map(x => `${x.g} livello ${x.lvl}, rango ${x.rank}`).join(', ');
     $('#radar').innerHTML = `<svg viewBox="0 0 ${S} ${S}" role="img" aria-label="Livelli per gruppo muscolare: ${desc}">${rings}${spokes}<polygon class="shape" points="${shape}"/>${marks}</svg>`;
 
     const total = sum(gs, x => x.xp);
@@ -617,7 +679,7 @@
         : 'Ogni gruppo sale di livello con gli xp degli esercizi che gli assegni.';
     }
     $('#gbars').innerHTML = gs.map(x => `
-      <div class="gbar"><b>${x.g}</b><div class="mini"><i style="width:${x.pct.toFixed(0)}%"></i></div><span class="lv">Lv ${x.lvl}</span></div>`).join('')
+      <div class="gbar"><b>${x.g}</b><span class="grank">${x.rankIcon} ${x.rank}</span><div class="mini"><i style="width:${x.pct.toFixed(0)}%"></i></div><span class="lv">Lv ${x.lvl}</span></div>`).join('')
       + `<p class="hint">${tip}</p>`;
   }
 
@@ -696,6 +758,26 @@
     $('#heat').innerHTML = `<div class="heat">${html}</div>`;
   }
 
+  function renderDungeon() {
+    const wk = mondayOf(today());
+    if (state.dungeon.weekKey !== wk) state.dungeon = { weekKey: wk, cleared: 0, clears: state.dungeon.clears };
+    const wxp = weeklyXp(state.logs, state.runs);
+    const lvl = stats().lvl;
+    const d = dungeonState(lvl, wxp);
+    const rooms = DUNGEON_ICONS.map((ic, i) => {
+      const st = i < d.cleared ? 'done' : i === d.cleared ? 'now' : 'locked';
+      return `<div class="room ${st}" title="${DUNGEON_NAMES[i]}: ${num(d.th[i])} xp nella settimana"><span>${st === 'locked' ? '🔒' : ic}</span></div>`;
+    }).join('<div class="path"></div>');
+    const box = $('#dungeon');
+    box.innerHTML = `<div class="drow">${rooms}</div>`;
+    const sub = $('#dungeonSub');
+    if (d.done) {
+      sub.textContent = `Dungeon completato questa settimana! Lunedì ne parte uno nuovo. Dungeon superati in totale: ${d ? state.dungeon.clears : 0}.`;
+    } else {
+      sub.textContent = `Stanza "${DUNGEON_NAMES[d.cleared]}": ${num(wxp)} / ${num(d.next)} xp guadagnati questa settimana. Ogni serie e ogni corsa contano.`;
+    }
+  }
+
   // Corsa: riepilogo, record e chilometri per settimana
   function renderRuns() {
     const box = $('#runStats');
@@ -758,7 +840,7 @@
         const data = JSON.parse(rd.result);
         if (!data || !Array.isArray(data.logs)) throw new Error('formato');
         if (!confirm('Importare il backup? Sostituirà i dati attuali.')) return;
-        state = { logs: data.logs, runs: Array.isArray(data.runs) ? data.runs : [], settings: data.settings || {} };
+        state = { logs: data.logs, runs: Array.isArray(data.runs) ? data.runs : [], dungeon: data.dungeon && typeof data.dungeon === 'object' ? data.dungeon : { weekKey: '', cleared: 0, clears: 0 }, settings: data.settings || {} };
         state.settings = Object.assign({ goal: 3, rest: 90, sound: true }, state.settings);
         state.logs.forEach(l => { if (!l.sets) l.sets = 1; });
         save(); syncSettings(); render();
@@ -772,7 +854,7 @@
   });
   $('#btnReset').addEventListener('click', () => {
     if (!confirm('Cancellare tutti i dati? Non si può annullare.')) return;
-    state = { logs: [], runs: [], settings: state.settings };
+    state = { logs: [], runs: [], dungeon: { weekKey: '', cleared: 0, clears: 0 }, settings: state.settings };
     save(); render();
   });
 

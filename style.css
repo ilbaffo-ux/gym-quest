@@ -140,12 +140,24 @@ input:focus-visible, select:focus-visible, button:focus-visible{outline:3px soli
 .shape{fill:rgba(255,201,60,.28); stroke:var(--xp); stroke-width:3; stroke-linejoin:round}
 .vtx{fill:var(--hot); stroke:var(--night); stroke-width:2}
 .glab{fill:var(--ink); font-size:13px; font-weight:800; font-family:var(--body)}
-.glv{fill:var(--xp); font-size:10px; font-family:var(--pixel)}
-.gbar{display:grid; grid-template-columns:86px 1fr 60px; gap:10px; align-items:center; margin-bottom:12px}
-.gbar b{font-weight:800}
+.glv{fill:var(--xp); font-size:9px; font-family:var(--pixel)}
+.gbar{display:grid; grid-template-columns:76px 92px 1fr 44px; gap:6px; align-items:center; margin-bottom:12px}
+.gbar b{font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.grank{font-size:11px; color:var(--dim); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .gbar .mini{height:12px; background:#150b28; border:2px solid var(--line); border-radius:3px; overflow:hidden}
 .gbar .mini i{display:block; height:100%; background:var(--xp); transition:width .6s ease}
 .gbar .lv{font-family:var(--pixel); font-size:11px; color:var(--xp); text-align:right}
+
+/* ---------- Dungeon ---------- */
+.drow{display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:0; margin:6px 0}
+.room{
+  width:44px; height:44px; min-width:44px; border-radius:6px; display:flex; align-items:center; justify-content:center;
+  font-size:22px; background:var(--panel-2); border:2px solid var(--line);
+}
+.room.now{border-color:var(--xp); background:#4a3a12; box-shadow:0 0 0 3px rgba(255,201,60,.25)}
+.room.done{border-color:var(--ok); background:#123a2c}
+.room.locked{opacity:.55}
+.path{width:14px; height:4px; background:var(--line); flex:0 0 auto}
 
 /* ---------- Grafico andamento ---------- */
 #chart svg{width:100%; height:auto; display:block}
